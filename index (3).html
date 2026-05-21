@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PriceList</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --jb-white: #ffffff;
+      --jb-light-gray: #f4f4f7;
+      --jb-border: #dfe1e5;
+      --jb-text-dark: #19191c;
+      --jb-text-muted: #70727a;
+      --jb-accent: #6b57ff;
+    }
+
+    body { 
+      background-color: var(--jb-white); 
+      color: var(--jb-text-dark);
+      font-family: 'Segoe UI', 'Inter', sans-serif; 
+      padding-bottom: 180px; 
+    }
+
+    /* Microsoft-Style Loading Overlay */
+    #loadingOverlay { 
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+      background: #ffffff; z-index: 9999; display: flex; 
+      flex-direction: column; justify-content: center; align-items: center; 
+      transition: opacity 0.6s ease;
+    }
+    .loader-text { font-size: 20px; font-weight: 300; color: #2b2b2b; margin-bottom: 25px; min-height: 30px; }
+    .ms-loader { display: flex; gap: 8px; }
+    .ms-dot { width: 6px; height: 6px; background-color: var(--jb-accent); border-radius: 50%; animation: ms-bounce 1.4s infinite ease-in-out both; }
+    .ms-dot:nth-child(1) { animation-delay: -0.32s; }
+    .ms-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes ms-bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+
+    /* Navigation */
+    .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--jb-border); padding: 8px 15px; }
+    .navbar-logo { height: 32px; width: auto; }
+
+    /* 3-Column Grid */
+    .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 15px 20px; }
+    .cat-btn { 
+      background: var(--jb-light-gray); color: var(--jb-text-dark); border: 1px solid var(--jb-border); 
+      padding: 12px 5px; border-radius: 6px; font-weight: 600; font-size: 11px; text-align: center;
+      text-transform: uppercase; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 50px;
+    }
+    .cat-btn.active { background: var(--jb-text-dark); color: white; border-color: var(--jb-text-dark); }
+
+    /* Tables */
+    .price-table { width: 100%; border-collapse: collapse; }
+    .price-table thead th { background: #fbfbfc; color: var(--jb-text-muted); font-size: 10px; text-transform: uppercase; padding: 12px 10px; border-bottom: 1px solid var(--jb-border); }
+    .price-table td { padding: 14px 10px; border-bottom: 1px solid #f0f0f2; vertical-align: middle; }
+    .grade-name { font-weight: 700; color: #000; font-size: 14px; }
+    .grade-unit { color: var(--jb-accent); font-size: 10px; font-weight: 800; }
+
+    /* Controls */
+    .qty-box { width: 50px; height: 36px; border: 1px solid var(--jb-border); text-align: center; border-radius: 4px; }
+    .btn-add { background: #fff; border: 1px solid var(--jb-border); font-weight: 800; font-size: 11px; width: 60px; height: 36px; border-radius: 4px; }
+    .btn-add.btn-added { background: var(--jb-accent); border-color: var(--jb-accent); color: white; }
+
+    /* Interface */
+    .btn-pdf { position: fixed; bottom: 140px; right: 15px; background: var(--jb-text-dark); color: white; border-radius: 50px; padding: 12px 18px; font-size: 11px; font-weight: 700; z-index: 999; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    #bottomBar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid var(--jb-border); z-index: 1000; }
+    .update-tag { background: #f0f0f5; color: var(--jb-text-muted); font-size: 9px; text-align: center; padding: 5px 0; border-bottom: 1px solid var(--jb-border); letter-spacing: 0.5px; }
+
+/* Sold out button */
+.text-danger.border {
+  border-color: #f5c6cb !important;
+  background-color: #fff5f5 !important;
+  text-transform: uppercase;
+}
+
+    /* Multi-Support Buttons */
+    .support-group { display: flex; gap: 5px; }
+    .btn-support-icon {
+      width: 32px; height: 32px; border: 1px solid var(--jb-border);
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      background: #f8f9fa; color: var(--jb-text-dark); text-decoration: none; font-size: 14px;
+    }
+    .btn-support-icon:hover { background: #e9ecef; color: var(--jb-accent); }
+
+    @media (max-width: 480px) { .navbar-logo { height: 26px; } .cat-btn { font-size: 10px; min-height: 45px; } }
+  </style>
+</head>
+<body>
+
+  <div id="loadingOverlay">
+    <div id="loaderText" class="loader-text">Good things are coming</div>
+    <div class="ms-loader">
+      <div class="ms-dot"></div><div class="ms-dot"></div><div class="ms-dot"></div>
+    </div>
+  </div>
+
+  <nav class="navbar d-flex justify-content-between align-items-center fixed-top">
+    <img src="https://skillresult.in/wp-content/uploads/2025/01/logo-2.png" alt="PriceList" class="navbar-logo">
+    <div class="d-flex align-items-center gap-2">
+      <div class="support-group">
+        <a href="tel:+919311226437" class="btn-support-icon" title="Call Support"><i class="fa-solid fa-phone"></i></a>
+        <a href="https://wa.me/9311226437" target="_blank" class="btn-support-icon text-success" title="WhatsApp Support"><i class="fa-brands fa-whatsapp"></i></a>
+      </div>
+      <button class="btn btn-dark btn-sm fw-bold" style="font-size: 10px; padding: 6px 12px;" data-bs-toggle="modal" data-bs-target="#cartModal">CART</button>
+    </div>
+  </nav>
+
+  <header style="margin-top: 75px; text-align: center; margin-bottom: 20px;">
+    <p class="text-muted small fw-bold">A House of Raw Materials and Additives</p>
+  </header>
+
+  <div class="px-3 mb-3">
+    <input type="text" id="searchInput" class="form-control" style="background: var(--jb-light-gray); border-radius: 8px;" placeholder="Search grades..." onkeyup="filterProducts()">
+  </div>
+
+  <div id="catGrid" class="cat-grid"></div>
+
+  <button class="btn-pdf" onclick="downloadPDF()"><i class="fa-solid fa-file-arrow-down me-2"></i> EXPORT PRICE LIST</button>
+
+  <div class="table-responsive">
+    <table class="price-table">
+      <thead>
+        <tr>
+          <th style="text-align: left; padding-left: 15px;">Grade</th>
+          <th>Rate</th>
+          <th>Qty</th>
+          <th>Action</th>
+          
+        </tr>
+      </thead>
+      <tbody id="productBody"></tbody>
+    </table>
+  </div>
+
+  <div id="bottomBar">
+    <div class="update-tag fw-bold text-uppercase">
+      <i class="fa-solid fa-rotate me-1"></i> Prices Updated: <span id="lastUpdatedDate">...</span>
+    </div>
+    <div class="d-flex justify-content-between align-items-center p-3">
+      <div>
+        <span class="text-muted fw-bold" style="font-size: 10px;">ESTIMATED TOTAL (Including 18% GST)</span>
+        <div class="fs-5 fw-bold">₹<span id="cartTotal">0</span></div>
+      </div>
+      <button class="btn btn-primary px-4 fw-bold" style="background: var(--jb-accent); border:none; height: 45px;" onclick="openCheckout()">PROCEED</button>
+    </div>
+  </div>
+
+  <div class="modal fade" id="cartModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h6 class="m-0 fw-bold">Your Selections</h6>
+          <button class="btn btn-sm text-danger fw-bold" onclick="clearCart()">Clear All</button>
+        </div>
+        <div class="modal-body p-0" id="cartItemsList"></div>
+        <div class="modal-footer"><button class="btn btn-dark w-100 fw-bold" data-bs-dismiss="modal" onclick="openCheckout()">PROCEED TO QUOTE</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="checkoutModal" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-header border-0"><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div id="modalBody" class="modal-body p-4">
+          <div id="checkoutForm">
+            <h5 class="fw-bold mb-3">Confirm Details</h5>
+            <div id="taxSummary" class="p-3 mb-3 rounded-2" style="background: var(--jb-light-gray); border: 1px solid var(--jb-border);"></div>
+            <input type="text" id="custName" class="form-control mb-2" placeholder="Full Name">
+            <input type="text" id="custCompany" class="form-control mb-2" placeholder="Company Name">
+            <input type="tel" id="custPhone" class="form-control mb-3" placeholder="WhatsApp Number">
+            <button class="btn btn-primary w-100 fw-bold" style="background: var(--jb-accent); border:none;" onclick="processCheckout()">GENERATE QUOTATION</button>
+          </div>
+          <div id="successScreen" style="display:none;" class="text-center py-4">
+            <i class="fa-solid fa-check-circle text-success fs-1 mb-3"></i>
+            <h4 class="fw-bold">Request Sent</h4>
+            <a id="waBtn" href="#" target="_blank" class="btn btn-success w-100 fw-bold">OPEN IN WHATSAPP</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3afj5dhNXTR1UqDpOqEVtoG27wwdse9enaY-nGcuK1v2uiZ9kf52O1RnC14mS6bTI/exec"; 
+    let rawData = [], cart = [], activeCat = "";
+
+    const phrases = ["Good things are coming", "Fetching latest prices", "Organizing materials"];
+    let phraseIdx = 0;
+    const phraseInterval = setInterval(() => {
+      phraseIdx = (phraseIdx + 1) % phrases.length;
+      document.getElementById('loaderText').innerText = phrases[phraseIdx];
+    }, 850);
+
+    window.onload = () => {
+      // CLEAR CART ON REFRESH - No local storage retrieval here
+      localStorage.removeItem('polymerDraft');
+      cart = []; 
+
+      const today = new Date();
+      document.getElementById('lastUpdatedDate').innerText = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      fetch(SCRIPT_URL).then(res => res.json()).then(data => {
+        rawData = data; renderCats();
+        if(data[0]) filter(data[0].Category);
+        updateUI();
+        clearInterval(phraseInterval);
+        setTimeout(() => {
+          document.getElementById('loadingOverlay').style.opacity = '0';
+          setTimeout(() => document.getElementById('loadingOverlay').style.display = 'none', 600);
+        }, 1200);
+      });
+    };
+
+    function renderCats() {
+      const cats = [...new Set(rawData.map(p => p.Category))];
+      document.getElementById('catGrid').innerHTML = cats.map(c => 
+        `<div class="cat-btn" id="btn-${c.replace(/\s/g,'')}" onclick="filter('${c}')">${c}</div>`).join('');
+    }
+
+    function filter(cat) {
+      activeCat = cat;
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById(`btn-${cat.replace(/\s/g,'')}`);
+      if(btn) btn.classList.add('active');
+      filterProducts();
+    }
+
+    function filterProducts() {
+      const term = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = rawData.filter(p => p.Category === activeCat && (p.Grade.toLowerCase().includes(term) || (p.Description && p.Description.toLowerCase().includes(term))));
+      
+      document.getElementById('productBody').innerHTML = filtered.map((p, idx) => {
+        const inCart = cart.find(c => c.grade === p.Grade && c.unit === p.Unit);
+        
+        // Check if stock is 0, empty, or "No" (adjust string based on your Google Sheet data)
+        // const isOutOfStock = !p.Stock || p.Stock === 0 || p.Stock === "0" || p.Stock.toString().toLowerCase() === "no";
+
+        return `<tr>
+          <td style="padding-left:15px">
+            <div class="grade-name">${p.Grade}</div>
+            <span class="grade-unit">${p.Description || ''}</span>
+          </td>
+          <td class="fw-bold">₹${p.Price} /${p.Unit}</td>
+          
+    
+            <td><input type="number" id="qty-${idx}" value="${inCart ? inCart.qty : 1}" class="qty-box" min="1"></td>
+            <td>
+              <button class="btn-add ${inCart ? 'btn-added' : ''}" onclick="addToCart('${p.Grade.replace(/'/g, "\\'")}', ${p.Price}, '${p.Unit.replace(/'/g, "\\'")}', ${idx})">
+                ${inCart ? '<i class="fa-solid fa-check"></i>' : 'ADD'}
+              </button>
+            </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function addToCart(grade, price, unit, idx) {
+      const qty = parseInt(document.getElementById(`qty-${idx}`).value);
+      const existingIdx = cart.findIndex(i => i.grade === grade && i.unit === unit);
+      if(existingIdx > -1) { cart.splice(existingIdx, 1); } 
+      else { cart.push({grade, price, unit, qty}); }
+      updateUI();
+    }
+
+    function updateUI() {
+      let totalAmount = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+      let total = totalAmount*1.18;
+      document.getElementById('cartTotal').innerText = total.toLocaleString('en-IN');
+      document.getElementById('bottomBar').style.display = cart.length > 0 ? 'block' : 'none';
+      const list = document.getElementById('cartItemsList');
+      list.innerHTML = cart.length === 0 ? '<p class="p-4 text-center text-muted">No items selected</p>' : 
+        cart.map(i => `<div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+            <div><b style="font-size:13px">${i.grade}</b><br><small>${i.qty} ${i.unit}</small></div>
+            <button class="btn btn-sm text-danger" onclick="removeFromCart('${i.grade.replace(/'/g, "\\'")}', '${i.unit.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i></button>
+          </div>`).join('');
+      filterProducts();
+    }
+
+    function removeFromCart(grade, unit) { cart = cart.filter(i => !(i.grade === grade && i.unit === unit)); updateUI(); }
+    function clearCart() { if(confirm("Clear all items?")) { cart = []; updateUI(); } }
+
+    function openCheckout() {
+      let totalAmount = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+      let total = totalAmount * 1.18;
+      document.getElementById('taxSummary').innerHTML = `<small class="text-muted fw-bold">TOTAL ESTIMATE (Including 18% GST)</small><div class="fs-4 fw-bold">₹${total.toLocaleString('en-IN')}</div>`;
+      new bootstrap.Modal(document.getElementById('checkoutModal')).show();
+    }
+
+    function processCheckout() {
+      const cust = { name: document.getElementById('custName').value, company: document.getElementById('custCompany').value, phone: document.getElementById('custPhone').value };
+      if(!cust.name || !cust.company) return alert("Please fill details");
+      document.getElementById('checkoutForm').innerHTML = '<div class="py-5 text-center"><div class="spinner-border text-primary"></div><p class="mt-2">Sending...</p></div>';
+      fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ customerData: cust, cartItems: cart }) })
+        .then(res => res.json()).then(res => {
+          document.getElementById('checkoutForm').style.display = 'none';
+          document.getElementById('successScreen').style.display = 'block';
+          document.getElementById('waBtn').href = res.waLink;
+        });
+    }
+
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(25, 25, 28);
+      doc.text("PRICELIST", 14, 20);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text("Official Material Price List Excluded GST", 14, 28);
+      doc.text(`Category: ${activeCat}`, 14, 33);
+      doc.text(`Dated: ${new Date().toLocaleDateString('en-GB')}`, 160, 28);
+      const rows = rawData.filter(p => p.Category === activeCat).map(p => [p.Grade, p.Description || '-', `Rs. ${p.Price} / ${p.Unit}`]);
+      doc.autoTable({ 
+        head: [['Grade', 'Description', 'Rate']], 
+        body: rows, 
+        startY: 38,
+        headStyles: { fillColor: [107, 87, 255] },
+        styles: { fontSize: 9, cellPadding: 3 }
+      });
+      doc.save(`PriceList_${activeCat.replace(/\s+/g, '_')}.pdf`);
+    }
+  </script>
+</body>
+</html>
